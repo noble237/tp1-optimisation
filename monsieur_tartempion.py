@@ -27,7 +27,7 @@ import random
 import simpleaudio as simpleaudio
 import time
 import sqlite3 as sqlite
-import PySimpleSimpleGui as SimpleGui
+import PySimpleGui as SimpleGui
 
 from images import *
 from indicateurs import Indicateur

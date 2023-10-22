@@ -27,7 +27,7 @@ import random
 import simpleaudio as simpleaudio
 import time
 import sqlite3 as sqlite
-import PySimpleSimpleGui as SimpleGui
+import PySimpleGUI as SimpleGui
 
 from images import *
 from indicateurs import Indicateur
@@ -51,60 +51,97 @@ police_ou = (SimpleGui.DEFAULT_FONT, 20, 'italic')
 
 
 
-#Montre une fenetre qui affiche l'image de la compagnie de programmation
-def splasher_equipe(temps_ms: int) -> None:
-
-    SimpleGui.Window('Monsieur Tartempion', [[SimpleGui.Image(data=equipe_base64())]], # transparent_color=SimpleGui.theme_background_color(),
-               no_titlebar=True, keep_on_top=True).read(timeout=temps_ms, close=True)
 
 
 
-#Montre une fenetre qui affiche l'image du logo du jeu
+
+
+
+
+import random
+import simpleaudio as sa
+import time
+import sqlite3 as squirrel
+import PySimpleGUI as gui
+
+from images import *
+from indicateurs import Indicateur
+
+
+NB_QUESTIONS = 21
+
+police_title = (gui.DEFAULT_FONT, 40, 'italic')
+police_etiquettes = (gui.DEFAULT_FONT, 20, 'normal')
+police_temps = (gui.DEFAULT_FONT, 50, 'normal')
+police_question = (gui.DEFAULT_FONT, 30, 'normal')
+police_reponses = (gui.DEFAULT_FONT, 20, 'normal')
+police_ou = (gui.DEFAULT_FONT, 20, 'italic')
+
+
+
+
+
+
+--------------------------------------------------------------------------------------
+-- Splasher
+--------------------------------------------------------------------------------------
+
+def splasher(image_data, par_dessus : bool, delais_ms : int, couleur_transparente=None) -> None:
+    SimpleGui.Window('Monsieur Tartempion', image_data, transparent_color=couleur_transparente, no_titlebar=True, keep_on_top=par_dessus).read(timeout=delais_ms, close=True)
+
+
 def splacher_titre(delai: int, pardessus: bool) -> None:
+    splasher([[SimpleGui.Image(data=titre_base64())]], pardessus, delai)
 
-    SimpleGui.Window('Monsieur Tartempion', [[SimpleGui.Image(data=titre_base64())]], no_titlebar=True, keep_on_top=pardessus).read(timeout=delai, close=True)
+def splasher_echec(temps_ms: int) -> None:
+    splasher([[SimpleGui.Image(data=echec_base64())]], True, temps_ms, SimpleGui.theme_background_color())
+
+def splasher_succes() -> None:
+    splasher([[SimpleGui.Image(data=succes_base64())]], True, 3000, "maroon2")
+
+def splasher_equipe(temps_ms: int) -> None:
+    splasher([[SimpleGui.Image(data=equipe_base64())]], True, temps_ms)		# transparent_color=SimpleGui.theme_background_color()
+    
+    
+    
 
 
 
-#Affiche le jeu
-def afficher_jeu() -> SimpleGui.Window:
+def afficher_jeu() -> gui.Window:
 
-    title = [SimpleGui.Text('Monsieur Tartempion', key='TITLE', font=police_title)]
+    title = [gui.Text('Monsieur Tartempion', key='TITLE', font=police_title)]
 
-    temps = [[SimpleGui.Text('Temps restant', font=police_etiquettes, size=70, justification='center')], [SimpleGui.Text(str(60), key='TEMPS', font=police_temps)]]
+    temps = [[gui.Text('Temps restant', font=police_etiquettes, size=70, justification='center')], [gui.Text(str(60), key='TEMPS', font=police_temps)]]
 
-    boutons_reponse = [SimpleGui.Column([[SimpleGui.Button(key='BOUTON-GAUCHE', font=police_reponses, button_color=('white', SimpleGui.theme_background_color()),
-                   border_width=0, disimpleaudiobled=True, visible=True),
-        SimpleGui.Text(' ou ', key='OU', font=police_ou, text_color=SimpleGui.theme_background_color()),
-        SimpleGui.Button(key='BOUTON-DROIT', font=police_reponses, button_color=('white', SimpleGui.theme_background_color()),
-                   border_width=0, disimpleaudiobled=True, visible=True)]], element_justification='center')]
+    boutons_reponse = [gui.Column([[gui.Button(key='BOUTON-GAUCHE', font=police_reponses, button_color=('white', gui.theme_background_color()),
+                   border_width=0, disabled=True, visible=True),
+        gui.Text(' ou ', key='OU', font=police_ou, text_color=gui.theme_background_color()),
+        gui.Button(key='BOUTON-DROIT', font=police_reponses, button_color=('white', gui.theme_background_color()),
+                   border_width=0, disabled=True, visible=True)]], element_justification='center')]
 
-    question = [SimpleGui.Text(' ', key='QUESTION', font=police_question)]
-    action = [SimpleGui.Button(image_data=bouton_jouer_base64(), key='BOUTON-ACTION', border_width=0, button_color=(SimpleGui.theme_background_color(), SimpleGui.theme_background_color()), pad=(0, 10)),
-              SimpleGui.Image(data=bouton_inactif_base64(), key='IMAGE-BOUTON-INACTIF', visible=False, pad=(0, 10))]
+    question = [gui.Text(' ', key='QUESTION', font=police_question)]
 
-    indicateurs = [*[SimpleGui.Image(data=indicateur_vide_base64(), key=f'INDICATEUR-{i}', pad=(4, 10)) for i in range(NB_QUESTIONS)]]
+    action = [gui.Button(image_data=bouton_jouer_base64(), key='BOUTON-ACTION', border_width=0, button_color=(gui.theme_background_color(), gui.theme_background_color()), pad=(0, 10)),
+              gui.Image(data=bouton_inactif_base64(), key='IMAGE-BOUTON-INACTIF', visible=False, pad=(0, 10))]
 
-    fenetre = SimpleGui.Window('Monsieur Tartempion', [temps, boutons_reponse, question, action, indicateurs], keep_on_top=True, element_padding=(0, 0),
+    indicateurs = [*[gui.Image(data=indicateur_vide_base64(), key=f'INDICATEUR-{i}', pad=(4, 10)) for i in range(NB_QUESTIONS)]]
+
+    fenetre = gui.Window('Monsieur Tartempion', [temps, boutons_reponse, question, action, indicateurs], keep_on_top=True, element_padding=(0, 0),
                         element_justification='center', resizable=False, finalize=True)
 
     return fenetre
 
 
-
-#Met les parametres de l'affichage a 0
-def effacer_question_affichee(fenetre: SimpleGui.Window) -> None:
-    fenetre['BOUTON-GAUCHE'].update('', disimpleaudiobled=True, visible=True)
+def effacer_question_affichee(fenetre: gui.Window) -> None:
+    fenetre['BOUTON-GAUCHE'].update('', disabled=True, visible=True)
     fenetre['QUESTION'].update("")
-    fenetre['OU'].update(text_color=SimpleGui.theme_background_color())
-    fenetre['BOUTON-DROIT'].update('', disimpleaudiobled=True, visible=True)
+    fenetre['OU'].update(text_color=gui.theme_background_color())
+    fenetre['BOUTON-DROIT'].update('', disabled=True, visible=True)
 
 
-
-#Charge les questions et les retourne dans une liste
 def charger_questions(fichier_db: str) -> list:
 
-    connexion = sqlite.connect(fichier_db)
+    connexion = squirrel.connect(fichier_db)
 
     with connexion:
         resultat_requete = connexion.execute('SELECT question, reponse_exacte, reponse_erronee FROM QUESTIONS')
@@ -112,51 +149,37 @@ def charger_questions(fichier_db: str) -> list:
     return [(enregistrement[0], enregistrement[1], enregistrement[2]) for enregistrement in resultat_requete]
 
 
-
-#Chooisie une question au hazard
 def choisir_questions(banque: list, nombre: int) -> list:
 
     return [[question, Indicateur.VIDE] for question in random.choices(banque, k=nombre)]
 
 
-
 def melanger_reponses(reponses: tuple) -> tuple:
     return (reponses[0], reponses[1]) if bool(random.getrandbits(1)) else (reponses[1], reponses[0])
 
-
-def splasher_echec(temps_ms: int) -> None:
-
-    SimpleGui.Window('Monsieur Tartempion', [[SimpleGui.Image(data=echec_base64())]], transparent_color=SimpleGui.theme_background_color(),
-               no_titlebar=True, keep_on_top=True).read(timeout=temps_ms, close=True)
-
-def splasher_succes() -> None:
-
-    SimpleGui.Window('Monsieur Tartempion', [[SimpleGui.Image(data=succes_base64())]], transparent_color="maroon2",
-               no_titlebar=True, keep_on_top=True).read(timeout=3000, close=True)
-
-def afficher(fenetre: SimpleGui.Window, question: tuple) -> None:
+def afficher(fenetre: gui.Window, question: tuple) -> None:
     fenetre['QUESTION'].update(question[0])
     reponses = melanger_reponses((question[1], question[2]))
-    fenetre['BOUTON-GAUCHE'].update(reponses[0], disimpleaudiobled=False, visible=True)
+    fenetre['BOUTON-GAUCHE'].update(reponses[0], disabled=False, visible=True)
     fenetre['OU'].update(text_color='white')
-    fenetre['BOUTON-DROIT'].update(reponses[1], disimpleaudiobled=False, visible=True)
+    fenetre['BOUTON-DROIT'].update(reponses[1], disabled=False, visible=True)
 
-def effacer_question(fenetre: SimpleGui.Window) -> None:
+def effacer_question(fenetre: gui.Window) -> None:
     fenetre['QUESTION'].update('')
-    fenetre['BOUTON-GAUCHE'].update('', disimpleaudiobled=True, visible=True)
-    fenetre['OU'].update(text_color=SimpleGui.theme_background_color())
-    fenetre['BOUTON-DROIT'].update('', disimpleaudiobled=True, visible=True)
+    fenetre['BOUTON-GAUCHE'].update('', disabled=True, visible=True)
+    fenetre['OU'].update(text_color=gui.theme_background_color())
+    fenetre['BOUTON-DROIT'].update('', disabled=True, visible=True)
 
 
 def programme_principal() -> None:
     """Despote suprême de toutes les fonctions."""
 
-    SimpleGui.theme('Black')
+    gui.theme('Black')
 
-    son_victoire = simpleaudio.WaveObject.from_wave_file('522243__dzedenz__result-10.wav')
-    son_erreur = simpleaudio.WaveObject.from_wave_file('409282__wertstahl__syserr1v1-in_thy_face_short.wav')
-    son_fin_partie = simpleaudio.WaveObject.from_wave_file('173859__jivatma07__j1game_over_mono.wav')
-    musique_questions = simpleaudio.WaveObject.from_wave_file('550764__erokia__msfxp9-187_5-synth-loop-bpm-100.wav')
+    son_victoire = sa.WaveObject.from_wave_file('522243__dzedenz__result-10.wav')
+    son_erreur = sa.WaveObject.from_wave_file('409282__wertstahl__syserr1v1-in_thy_face_short.wav')
+    son_fin_partie = sa.WaveObject.from_wave_file('173859__jivatma07__j1game_over_mono.wav')
+    musique_questions = sa.WaveObject.from_wave_file('550764__erokia__msfxp9-187_5-synth-loop-bpm-100.wav')
 
     splasher_equipe(1500)
     splacher_titre(2000, True)
@@ -188,7 +211,7 @@ def programme_principal() -> None:
                     musique_questions_controles.stop()
                     splasher_echec(3000)
 
-                    fenetre['BOUTON-ACTION'].update(disimpleaudiobled=False, visible=True)
+                    fenetre['BOUTON-ACTION'].update(disabled=False, visible=True)
                     fenetre['IMAGE-BOUTON-INACTIF'].update(visible=False)
                     temps_restant = 60
                     fenetre['TEMPS'].update(str(temps_restant))
@@ -198,7 +221,7 @@ def programme_principal() -> None:
                     continue
 
         if event == 'BOUTON-ACTION':
-            fenetre['BOUTON-ACTION'].update(disimpleaudiobled=True, visible=False)
+            fenetre['BOUTON-ACTION'].update(disabled=True, visible=False)
             fenetre['IMAGE-BOUTON-INACTIF'].update(visible=True)
             temps_actuel = round(time.time())
             decompte_actif = True
@@ -223,7 +246,7 @@ def programme_principal() -> None:
                     musique_questions_controles.stop()
                     son_victoire.play()
                     splasher_succes()
-                    fenetre['BOUTON-ACTION'].update(disimpleaudiobled=False, visible=True)
+                    fenetre['BOUTON-ACTION'].update(disabled=False, visible=True)
                     fenetre['IMAGE-BOUTON-INACTIF'].update(visible=False)
                     temps_restant = TEMPS_EPREUVE
                     fenetre['TEMPS'].update(str(temps_restant))
@@ -241,19 +264,15 @@ def programme_principal() -> None:
                 fenetre[f'INDICATEUR-{prochaine_question}'].update(data=indicateur_rouge_base64())
                 questions[prochaine_question][1] = Indicateur.ROUGE
                 prochaine_question = 0
-                fenetre['BOUTON-ACTION'].update(disimpleaudiobled=False, visible=True)
+                fenetre['BOUTON-ACTION'].update(disabled=False, visible=True)
                 fenetre['IMAGE-BOUTON-INACTIF'].update(visible=False)
                 son_erreur.play()
                 musique_questions_controles.stop()
-        elif event == SimpleGui.WIN_CLOSED:
+        elif event == gui.WIN_CLOSED:
             decompte_actif = False
             quitter = True
 
     fenetre.close()
     del fenetre
 
-
-
-#Ajoute par le reviseur
-if __name__ == "__main__":
-	programme_principal()
+programme_principal()
