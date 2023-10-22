@@ -23,38 +23,6 @@ Ressources sous licences:
 
 
 
-import random
-import simpleaudio as simpleaudio
-import time
-import sqlite3 as sqlite
-import PySimpleGUI as SimpleGui
-
-from images import *
-from indicateurs import Indicateur
-
-
-
-
-
-
-NB_QUESTIONS = 21
-
-police_title = (SimpleGui.DEFAULT_FONT, 40, 'italic')
-police_etiquettes = (SimpleGui.DEFAULT_FONT, 20, 'normal')
-police_temps = (SimpleGui.DEFAULT_FONT, 50, 'normal')
-police_question = (SimpleGui.DEFAULT_FONT, 30, 'normal')
-police_reponses = (SimpleGui.DEFAULT_FONT, 20, 'normal')
-police_ou = (SimpleGui.DEFAULT_FONT, 20, 'italic')
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -81,11 +49,11 @@ police_ou = (gui.DEFAULT_FONT, 20, 'italic')
 
 
 
+####################################################
+# Splasher
+####################################################
 
---------------------------------------------------------------------------------------
--- Splasher
---------------------------------------------------------------------------------------
-
+#Affiche l'image en parametre
 def splasher(image_data, par_dessus : bool, delais_ms : int, couleur_transparente=None) -> None:
     SimpleGui.Window('Monsieur Tartempion', image_data, transparent_color=couleur_transparente, no_titlebar=True, keep_on_top=par_dessus).read(timeout=delais_ms, close=True)
 
@@ -104,9 +72,72 @@ def splasher_equipe(temps_ms: int) -> None:
     
     
     
+    
+    
+
+####################################################
+# Modifier l'interface
+####################################################
+    
+def effacer_question_affichee(fenetre: gui.Window) -> None:
+    fenetre['BOUTON-GAUCHE'].update('', disabled=True, visible=True)
+    fenetre['QUESTION'].update("")
+    fenetre['OU'].update(text_color=gui.theme_background_color())
+    fenetre['BOUTON-DROIT'].update('', disabled=True, visible=True)
+    
+    
+    
+    
+    
+    
+####################################################
+# Manipulation des questions
+####################################################
+
+def charger_questions(fichier_db: str) -> list:
+
+    connexion = squirrel.connect(fichier_db)
+
+    with connexion:
+        resultat_requete = connexion.execute('SELECT question, reponse_exacte, reponse_erronee FROM QUESTIONS')
+
+    return [(enregistrement[0], enregistrement[1], enregistrement[2]) for enregistrement in resultat_requete]
+
+
+def choisir_questions(banque: list, nombre: int) -> list:
+
+    return [[question, Indicateur.VIDE] for question in random.choices(banque, k=nombre)]
+
+
+def melanger_reponses(reponses: tuple) -> tuple:
+    return (reponses[0], reponses[1]) if bool(random.getrandbits(1)) else (reponses[1], reponses[0])
 
 
 
+
+
+
+###################################################
+# Modification et affichage de l'interface
+###################################################
+
+def afficher(fenetre: gui.Window, question: tuple) -> None:
+    fenetre['QUESTION'].update(question[0])
+    reponses = melanger_reponses((question[1], question[2]))
+    fenetre['BOUTON-GAUCHE'].update(reponses[0], disabled=False, visible=True)
+    fenetre['OU'].update(text_color='white')
+    fenetre['BOUTON-DROIT'].update(reponses[1], disabled=False, visible=True)
+
+
+
+def effacer_question(fenetre: gui.Window) -> None:
+    fenetre['QUESTION'].update('')
+    fenetre['BOUTON-GAUCHE'].update('', disabled=True, visible=True)
+    fenetre['OU'].update(text_color=gui.theme_background_color())
+    fenetre['BOUTON-DROIT'].update('', disabled=True, visible=True)
+    
+    
+    
 def afficher_jeu() -> gui.Window:
 
     title = [gui.Text('Monsieur Tartempion', key='TITLE', font=police_title)]
@@ -132,44 +163,13 @@ def afficher_jeu() -> gui.Window:
     return fenetre
 
 
-def effacer_question_affichee(fenetre: gui.Window) -> None:
-    fenetre['BOUTON-GAUCHE'].update('', disabled=True, visible=True)
-    fenetre['QUESTION'].update("")
-    fenetre['OU'].update(text_color=gui.theme_background_color())
-    fenetre['BOUTON-DROIT'].update('', disabled=True, visible=True)
 
 
-def charger_questions(fichier_db: str) -> list:
-
-    connexion = squirrel.connect(fichier_db)
-
-    with connexion:
-        resultat_requete = connexion.execute('SELECT question, reponse_exacte, reponse_erronee FROM QUESTIONS')
-
-    return [(enregistrement[0], enregistrement[1], enregistrement[2]) for enregistrement in resultat_requete]
 
 
-def choisir_questions(banque: list, nombre: int) -> list:
-
-    return [[question, Indicateur.VIDE] for question in random.choices(banque, k=nombre)]
-
-
-def melanger_reponses(reponses: tuple) -> tuple:
-    return (reponses[0], reponses[1]) if bool(random.getrandbits(1)) else (reponses[1], reponses[0])
-
-def afficher(fenetre: gui.Window, question: tuple) -> None:
-    fenetre['QUESTION'].update(question[0])
-    reponses = melanger_reponses((question[1], question[2]))
-    fenetre['BOUTON-GAUCHE'].update(reponses[0], disabled=False, visible=True)
-    fenetre['OU'].update(text_color='white')
-    fenetre['BOUTON-DROIT'].update(reponses[1], disabled=False, visible=True)
-
-def effacer_question(fenetre: gui.Window) -> None:
-    fenetre['QUESTION'].update('')
-    fenetre['BOUTON-GAUCHE'].update('', disabled=True, visible=True)
-    fenetre['OU'].update(text_color=gui.theme_background_color())
-    fenetre['BOUTON-DROIT'].update('', disabled=True, visible=True)
-
+###################################################
+# Programme primcipal
+###################################################
 
 def programme_principal() -> None:
     """Despote suprême de toutes les fonctions."""
@@ -274,6 +274,8 @@ def programme_principal() -> None:
 
     fenetre.close()
     del fenetre
+
+
 
 if __name__ == "__main__":
 	programme_principal()
