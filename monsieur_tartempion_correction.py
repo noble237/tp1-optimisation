@@ -31,13 +31,16 @@ import simpleaudio as audio
 import time
 import sqlite3 as sql
 import PySimpleGUI as SimpleGui
+import pickle
+import sys
+
 
 from images import *
 from indicateurs import Indicateur
 
 
 NB_QUESTIONS = 5
-TEMPS_TOTAL = NB_QUESTIONS * 2
+TEMPS_TOTAL = NB_QUESTIONS * 4
 
 # Cyrille
 DEFAULT_FONT = SimpleGui.DEFAULT_FONT
@@ -74,9 +77,6 @@ SONS = {
 
 
 
-
-
-
 ####################################################
 # Splasher
 ####################################################
@@ -85,36 +85,54 @@ def splasher(image_data, par_dessus : bool, delais_ms : int, couleur_transparent
     SimpleGui.Window('Monsieur Tartempion', image_data, transparent_color=couleur_transparente, no_titlebar=True, keep_on_top=par_dessus).read(timeout=delais_ms, close=True)
     
 # Cyrille
-def combiner_splasher(type_splash):
-    image_data = [[SimpleGui.Image(data=type_splash())]]
+def combiner_splasher(type_splash, is_splash):
+
+    image_data = None
     par_dessus = True
     delai_ms = 0
     couleur_type = None
 
     try:
-        if type_splash == titre_base64:
-            delai_ms = 2000
-        elif type_splash == equipe_base64:
-            couleur_type = SimpleGui.theme_background_color()
-            delai_ms = 1500
-        elif type_splash == echec_base64:
-            couleur_type = SimpleGui.theme_background_color()
-            delai_ms = 3000
-        elif type_splash == succes_base64:
-            couleur_type = "maroon2"
-            delai_ms = 3000
+        images_pickle = charger_images()
+
+        if type_splash == 'titre_base64':
+            image_titre_64 = images_pickle.get('titre64', None)
+            if image_titre_64:
+                image_data = [[SimpleGui.Image(data=image_titre_64())]]
+                delai_ms = 2000
+            else:
+                raise FileNotFoundError(f"L'image {type_splash} n'existe pas")
+        elif type_splash == 'equipe_base64':
+            image_equipe_64 = images_pickle.get('equipe64')
+            if image_equipe_64:
+                image_data = [[SimpleGui.Image(data=image_equipe_64())]]
+                delai_ms = 1500
+            else:
+                raise FileNotFoundError(f"L'image {type_splash} n'existe pas")
+        elif type_splash == 'echec_base64':
+            image_echec_64 = images_pickle.get('echec64')
+            if image_echec_64:
+                image_data = [[SimpleGui.Image(data=image_echec_64())]]
+                delai_ms = 3000
+            else:
+                raise FileNotFoundError(f"L'image {type_splash} n'existe pas")
+        elif type_splash == 'succes_base64':
+            image_succes_64 = images_pickle.get('succes64')
+            if image_succes_64:
+                image_data = [[SimpleGui.Image(data=image_succes_64())]]
+                delai_ms = 3000
+            else:
+                raise FileNotFoundError(f"L'image {type_splash} n'existe pas")
         else:
-            raise ValueError("Type de splash non reconnu") 
+            raise Exception("Type de splash non reconnu")
 
-        splasher(image_data, par_dessus, delai_ms, couleur_type)
-    except TypeError as te:
-        print(f"Erreur de type : {te}")  # Erreur de type, par exemple, si type_splash est un str ou int
-    except ValueError as ve:
-        print(f"Une erreur s'est produite : {ve}")  # Erreur de valeur, par exemple, si type_splash n'est pas reconnu
+        if is_splash:
+            splasher(image_data, par_dessus, delai_ms, couleur_type)
+
     except Exception as e:
-        print(f"Une erreur s'est produite : {e}")  # Autres
+        print(f"Erreur: {e}")
+        sys.exit(1)
 
-    
 
 ####################################################
 # Modifier l'interface
@@ -157,13 +175,21 @@ def gerer_question(fenetre: SimpleGui.Window, question: tuple) -> None:
 # Cyrille
 def charger_questions(fichier_db: str) -> list:
     try:
-        connexion = sql.connect(fichier_db)
-        with connexion:
-            resultat_requete = connexion.execute('SELECT question, reponse_exacte, reponse_erronee FROM QUESTIONS')
-        return [(enregistrement[0], enregistrement[1], enregistrement[2]) for enregistrement in resultat_requete]
+        # Vérifier si le fichier de la bd existe
+        if os.path.isfile(fichier_db):
+            connexion = sql.connect(fichier_db)
+            with connexion:
+                resultat_requete = connexion.execute('SELECT question, reponse_exacte, reponse_erronee FROM QUESTIONS')
+            return [(enregistrement[0], enregistrement[1], enregistrement[2]) for enregistrement in resultat_requete]
+        else:
+            raise FileNotFoundError(f"Le fichier de la bd {fichier_db} n'existe pas.")
     except sql.Error as e:
-        print(f"Une erreur s'est produite lors de la récupération des questions depuis la base de données : {e}")
+        print(f"Une erreur s'est produite lors de la connexion avec la base de données : {e}")
         return []
+    
+    
+
+    
 
 # Cyrille
 def choisir_questions(banque: list, nombre: int) -> list:
@@ -184,6 +210,20 @@ def choisir_questions(banque: list, nombre: int) -> list:
 
 def melanger_reponses(reponses: tuple) -> tuple:
     return (reponses[0], reponses[1]) if bool(random.getrandbits(1)) else (reponses[1], reponses[0])
+
+
+
+
+
+# Cyrille
+def charger_images():
+    try:
+        with open('images.pickle', 'rb') as pickle_file:
+            images_dict = pickle.load(pickle_file)
+        return images_dict
+    except FileNotFoundError:
+        print("Le fichier pickle n'a pas été trouvé.")
+        return {}
 
 
 
@@ -232,12 +272,13 @@ def programme_principal() -> None:
     SimpleGui.theme('Black')
 
     # Cyrille
-    combiner_splasher(equipe_base64)
-    combiner_splasher(titre_base64)
+    combiner_splasher('equipe_base64', True)
+    combiner_splasher('titre_base64', True)
 
 
     toutes_les_questions = charger_questions("questions.bd")
-    questions = choisir_questions(toutes_les_questions, NB_QUESTIONS)
+    if toutes_les_questions:
+        questions = choisir_questions(toutes_les_questions, NB_QUESTIONS)
 
     fenetre = afficher_jeu()
     temps_restant = TEMPS_TOTAL
@@ -263,7 +304,7 @@ def programme_principal() -> None:
                     musique_questions_controles.stop()
 
                     # Cyrille
-                    combiner_splasher(echec_base64)
+                    combiner_splasher('echec_base64', True)
 
                     fenetre['BOUTON-ACTION'].update(disabled=False, visible=True)
                     fenetre['IMAGE-BOUTON-INACTIF'].update(visible=False)
@@ -301,7 +342,7 @@ def programme_principal() -> None:
                     SONS['VICTOIRE'].play()
 
                     # Cyrille
-                    combiner_splasher(succes_base64)
+                    combiner_splasher('succes_base64', True)
 
                     fenetre['BOUTON-ACTION'].update(disabled=False, visible=True)
                     fenetre['IMAGE-BOUTON-INACTIF'].update(visible=False)
@@ -333,6 +374,31 @@ def programme_principal() -> None:
     del fenetre
 
 
+# Cyrille
+def initilisation_pickle():
+
+    images_list = [
+        ('titre64', titre_base64),
+        ('equipe64', equipe_base64),
+        ('echec64', echec_base64),
+        ('succes64', succes_base64),
+        ('bouton_inactif64', bouton_inactif_base64),
+        ('bouton_jouer64', bouton_jouer_base64),
+        ('indicateur_vide64', indicateur_vide_base64),
+        ('indicateur_jaune64', indicateur_jaune_base64),
+        ('indicateur_rouge64', indicateur_rouge_base64),
+        ('indicateur_vert64', indicateur_vert_base64)
+    ]
+
+    images_dict = dict(images_list)
+
+    with open('images.pickle', 'wb') as pickle_file:
+        pickle.dump(images_dict, pickle_file)
+
+    print("Les images ont été enregistrées dans le fichier pickle.")
+
+
+
 
 if __name__ == "__main__":
-	programme_principal()
+    programme_principal()
